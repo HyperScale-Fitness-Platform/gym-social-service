@@ -1,0 +1,33 @@
+-- 1. Create the THREADS table
+CREATE TABLE IF NOT EXISTS threads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Create the COMMENTS table
+CREATE TABLE IF NOT EXISTS comments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    thread_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Cascade delete comments if the parent thread is deleted
+    CONSTRAINT fk_comment_thread FOREIGN KEY (thread_id) 
+        REFERENCES threads(id) ON DELETE CASCADE
+);
+
+-- 3. Optimization Indexes
+-- Speeds up your feed query (ORDER BY created_at DESC)
+CREATE INDEX IF NOT EXISTS idx_threads_created_at ON threads(created_at DESC);
+
+-- Speeds up retrieving a specific user's threads (WHERE user_id = $1)
+CREATE INDEX IF NOT EXISTS idx_threads_user_id ON threads(user_id);
+
+-- Speeds up reading comment threads (WHERE thread_id = $1 ORDER BY created_at ASC)
+CREATE INDEX IF NOT EXISTS idx_comments_thread_id_created ON comments(thread_id, created_at ASC);

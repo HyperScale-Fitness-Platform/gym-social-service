@@ -82,7 +82,7 @@ async function updateThread(req, res, next) {
     }
 
     // 2. Perform the update
-    const updatedThread = await socialModel.updateThread(id, { title, content });
+    const updatedThread = await socialModel.updateThread(id, { title, content }, userId);
     res.status(200).json(updatedThread);
   } catch (err) {
     next(err);
@@ -106,7 +106,7 @@ async function deleteThread(req, res, next) {
       throw error;
     }
 
-    await socialModel.deleteThread(id);
+    await socialModel.deleteThread(id, userId);
     res.status(200).json({ message: "Thread deleted successfully" });
   } catch (err) {
     next(err);
@@ -176,7 +176,7 @@ async function updateComment(req, res, next) {
       throw error;
     }
     
-    const updatedComment = await socialModel.updateComment(commentId, content);
+    const updatedComment = await socialModel.updateComment(commentId, userId, content);
     if (!updatedComment) {
       const error = new Error("Comment not found");
       error.status = 404;

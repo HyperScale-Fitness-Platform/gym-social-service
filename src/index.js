@@ -3,12 +3,13 @@ dotenv.config();
 
 const express = require("express");
 const socialRoutes = require("./routes/social.routes");
+const { initSocket } = require("./config/socket");
+const chatRoutes = require("./routes/chat.routes");
 const { errorHandler } = require("./middleware/errorHandler.middleware");
+const http = require("http");
 
 const app = express();
 
-// Without this, req.body would be undefined for JSON requests — this
-// tells Express to automatically parse incoming JSON bodies.
 app.use(express.json());
 
 app.get("/health", (req, res) => {
@@ -17,10 +18,14 @@ app.get("/health", (req, res) => {
 
 
 app.use("/social", socialRoutes);
+app.use("/chat", chatRoutes);
 
 app.use(errorHandler);
 
+const httpServer = http.createServer(app);
+initSocket(httpServer);
+
 const PORT = process.env.PORT;
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`social-service listening on port ${PORT}`);
 });

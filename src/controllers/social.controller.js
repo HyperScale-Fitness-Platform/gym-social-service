@@ -1,5 +1,5 @@
 const socialModel = require("../models/social.model"); // Assuming this is your model's file name
-
+const { getIO } = require("../config/socket");
 // ==========================================
 // 1. THREADS
 // ==========================================
@@ -31,7 +31,7 @@ async function getUserThreads(req, res, next) {
 async function getThreadById(req, res, next) {
   try {
     const thread = await socialModel.findThreadById(req.params.id);
-    
+
     if (!thread) {
       const error = new Error("Thread not found");
       error.status = 404;
@@ -47,7 +47,7 @@ async function getThreadById(req, res, next) {
 async function createThread(req, res, next) {
   try {
     const { title, content } = req.body;
-    const userId = req.user.id; 
+    const userId = req.user.id;
 
     if (!title || !content) {
       const error = new Error("Title and content are required");
@@ -56,6 +56,9 @@ async function createThread(req, res, next) {
     }
 
     const newThread = await socialModel.createThread({ userId, title, content });
+    // Emit only AFTER successfully saving to database
+    getIO().emit("thread:created", newThread);
+
     res.status(201).json(newThread);
   } catch (err) {
     next(err);
@@ -83,6 +86,8 @@ async function updateThread(req, res, next) {
 
     // 2. Perform the update
     const updatedThread = await socialModel.updateThread(id, { title, content }, userId);
+    getIO().emit("thread:updated", updatedThread);
+
     res.status(200).json(updatedThread);
   } catch (err) {
     next(err);
@@ -106,7 +111,12 @@ async function deleteThread(req, res, next) {
       throw error;
     }
 
-    await socialModel.deleteThread(id, userId);
+    const deletedThread = await socialModel.deleteThread(id, userId);
+
+    getIO().emit("thread:deleted", {
+      id: deletedThread.id,
+    });
+
     res.status(200).json({ message: "Thread deleted successfully" });
   } catch (err) {
     next(err);
@@ -158,6 +168,9 @@ async function createComment(req, res, next) {
     }
 
     const newComment = await socialModel.createComment({ threadId, userId, content });
+    // Send only to users currently viewing this thread
+    getIO().to(`thread:${threadId}`).emit("comment:created", newComment);
+
     res.status(201).json(newComment);
   } catch (err) {
     next(err);
@@ -175,13 +188,15 @@ async function updateComment(req, res, next) {
       error.status = 400;
       throw error;
     }
-    
+
     const updatedComment = await socialModel.updateComment(commentId, userId, content);
     if (!updatedComment) {
       const error = new Error("Comment not found");
       error.status = 404;
       throw error;
     }
+    getIO().to(`thread:${updatedComment.thread_id}`).emit("comment:updated", updatedComment);
+
 
     res.status(200).json(updatedComment);
   } catch (err) {
@@ -200,6 +215,7 @@ async function deleteComment(req, res, next) {
       error.status = 404;
       throw error;
     }
+    getIO().to(`thread:${deletedComment.thread_id}`).emit("comment:deleted", { id: deletedComment.id, thread_id: deletedComment.thread_id, });
 
     res.status(200).json({ message: "Comment removed successfully" });
   } catch (err) {
@@ -214,13 +230,14 @@ async function deleteComment(req, res, next) {
 async function adminDeleteThread(req, res, next) {
   try {
     const { id } = req.params;
-    
+
     const thread = await socialModel.adminDeleteThread(id);
     if (!thread) {
       const error = new Error("Thread not found");
       error.status = 404;
       throw error;
     }
+    getIO().emit("thread:deleted", { id: thread.id, });
 
     res.status(200).json({ message: "Thread content administratively removed" });
   } catch (err) {

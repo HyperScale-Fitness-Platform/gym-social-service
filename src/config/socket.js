@@ -1,8 +1,10 @@
 const { Server } = require("socket.io");
 const chatService = require("../services/chat.service");
 
+let io;
+
 function initSocket(httpServer) {
-  const io = new Server(httpServer, {
+   io = new Server(httpServer, {
     cors: {
       origin: "*",
     },
@@ -61,6 +63,30 @@ function initSocket(httpServer) {
       }
     });
 
+        // ==============================
+    // COMMUNITY THREAD ROOMS
+    // ==============================
+
+    socket.on("join:thread", (threadId) => {
+      if (!threadId) return;
+
+      socket.join(`thread:${threadId}`);
+
+      console.log(
+        `User ${socket.userId} joined thread:${threadId}`
+      );
+    });
+
+    socket.on("leave:thread", (threadId) => {
+      if (!threadId) return;
+
+      socket.leave(`thread:${threadId}`);
+
+      console.log(
+        `User ${socket.userId} left thread:${threadId}`
+      );
+    });
+
     socket.on("disconnect", () => {
       console.log(`socket disconnected: user ${socket.userId}`);
     });
@@ -68,5 +94,11 @@ function initSocket(httpServer) {
 
   return io;
 }
+function getIO() {
+   if (!io) { 
+    throw new Error("Socket.IO has not been initialized"); 
+  } 
+  return io; 
+}
 
-module.exports = { initSocket };
+module.exports = { initSocket, getIO };

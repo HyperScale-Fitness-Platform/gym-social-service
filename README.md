@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS messages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE customer_profiles (
+CREATE TABLE IF NOT EXISTS customer_profiles (
     user_id UUID PRIMARY KEY,
     full_name VARCHAR(255),
     photo_url TEXT,
@@ -236,7 +236,7 @@ CREATE TABLE IF NOT EXISTS messages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE customer_profiles (
+CREATE TABLE IF NOT EXISTS customer_profiles (
     user_id UUID PRIMARY KEY,
     full_name VARCHAR(255),
     photo_url TEXT,

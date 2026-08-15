@@ -21,5 +21,20 @@ async function getConversation(req, res, next) {
     next(err);
   }
 }
+async function getConnections(req, res, next) {
+  try {
+    const currentUserId = req.user.id;
 
-module.exports = { getConversation };
+    const connections =
+      await chatService.getUserConnections(
+        currentUserId
+      );
+
+    res.status(200).json(connections);
+
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getConversation, getConnections };

@@ -1,5 +1,6 @@
 const { Server } = require("socket.io");
 const chatService = require("../services/chat.service");
+const chatConnectionModel = require("../models/chatConnection.model");
 
 let io;
 
@@ -43,29 +44,102 @@ function initSocket(httpServer) {
         // Save to the database FIRST — this is the source of truth.
         // If the recipient is offline, this is the only record of the
         // message until they next fetch history.
+        // ------------------------------------------
+        // 1. Validate input
+        // ------------------------------------------
+
+        if (!receiverId || !content || !content.trim()) {
+          if (callback) {
+            callback({
+              status: "error",
+              error: "receiverId and content are required",
+            });
+          }
+
+          return;
+        }
+
+        // ------------------------------------------
+        // 2. Make sure the users are allowed to chat
+        // ------------------------------------------
+
+        const connectionExists =
+          await chatConnectionModel.connectionExists(
+            socket.userId,
+            receiverId
+          );
+
+        if (!connectionExists) {
+          if (callback) {
+            callback({
+              status: "error",
+              error:
+                "You do not have a chat connection with this user",
+            });
+          }
+
+          return;
+        }
+
+        // ------------------------------------------
+        // 3. Save message to database
+        // ------------------------------------------
+        // The database is the source of truth.
+        // This means the message is saved even if
+        // the receiver is currently offline.
+
         const message = await chatService.saveMessage({
           senderId: socket.userId,
           receiverId,
-          content,
+          content: content.trim(),
         });
 
-        // Push it live to the recipient's room, if they're connected.
-        io.to(`user:${receiverId}`).emit("new_message", message);
+        // ------------------------------------------
+        // 4. Send message to receiver
+        // ------------------------------------------
 
-        // Also echo it back to the sender's OTHER connected devices
-        io.to(`user:${socket.userId}`).emit("new_message", message);
+        io.to(`user:${receiverId}`).emit(
+          "new_message",
+          message
+        );
 
-        // Acknowledge back to the sender that it was saved successfully
-        if (callback) callback({ status: "ok", message });
+        // ------------------------------------------
+        // 5. Send message back to sender
+        // ------------------------------------------
+        // This is useful when the sender has multiple
+        // devices/tabs connected.
+
+        io.to(`user:${socket.userId}`).emit(
+          "new_message",
+          message
+        );
+
+        // ------------------------------------------
+        // 6. Acknowledge successful sending
+        // ------------------------------------------
+
+        if (callback) {
+          callback({
+            status: "ok",
+            message,
+          });
+        }
+
       } catch (err) {
         console.error("send_message error:", err);
-        if (callback) callback({ status: "error", error: err.message });
+
+        if (callback) {
+          callback({
+            status: "error",
+            error: err.message || "Failed to send message",
+          });
+        }
       }
     });
 
-        // ==============================
+    // ==========================================
     // COMMUNITY THREAD ROOMS
-    // ==============================
+    // ==========================================
 
     socket.on("join:thread", (threadId) => {
       if (!threadId) return;
@@ -87,18 +161,31 @@ function initSocket(httpServer) {
       );
     });
 
+    // ==========================================
+    // DISCONNECT
+    // ==========================================
+
     socket.on("disconnect", () => {
-      console.log(`socket disconnected: user ${socket.userId}`);
+      console.log(
+        `socket disconnected: user ${socket.userId}`
+      );
     });
   });
 
   return io;
 }
+
 function getIO() {
-   if (!io) { 
-    throw new Error("Socket.IO has not been initialized"); 
-  } 
-  return io; 
+  if (!io) {
+    throw new Error(
+      "Socket.IO has not been initialized"
+    );
+  }
+
+  return io;
 }
 
-module.exports = { initSocket, getIO };
+module.exports = {
+  initSocket,
+  getIO,
+};

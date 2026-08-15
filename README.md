@@ -172,10 +172,34 @@ CREATE TABLE IF NOT EXISTS messages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE customer_profiles (
+    user_id UUID PRIMARY KEY,
+    full_name VARCHAR(255),
+    photo_url TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS chat_connections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    user_one_id UUID NOT NULL,
+    user_two_id UUID NOT NULL,
+
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chat_connection_different_users
+        CHECK (user_one_id <> user_two_id)
+);
+
+
 CREATE INDEX IF NOT EXISTS idx_threads_created_at ON threads(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_threads_user_id ON threads(user_id);
 CREATE INDEX IF NOT EXISTS idx_comments_thread_id_created ON comments(thread_id, created_at ASC);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(sender_id, receiver_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_chat_connection ON chat_connections ( LEAST(user_one_id, user_two_id), GREATEST(user_one_id, user_two_id));
+CREATE INDEX IF NOT EXISTS idx_chat_connections_user_one ON chat_connections(user_one_id);
+CREATE INDEX IF NOT EXISTS idx_chat_connections_user_two ON chat_connections(user_two_id);
 ```
 
 ### Option 1: run SQL with Docker exec
@@ -212,10 +236,35 @@ CREATE TABLE IF NOT EXISTS messages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE customer_profiles (
+    user_id UUID PRIMARY KEY,
+    full_name VARCHAR(255),
+    photo_url TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS chat_connections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    user_one_id UUID NOT NULL,
+    user_two_id UUID NOT NULL,
+
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chat_connection_different_users
+        CHECK (user_one_id <> user_two_id)
+);
+
+
 CREATE INDEX IF NOT EXISTS idx_threads_created_at ON threads(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_threads_user_id ON threads(user_id);
 CREATE INDEX IF NOT EXISTS idx_comments_thread_id_created ON comments(thread_id, created_at ASC);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(sender_id, receiver_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_chat_connection ON chat_connections ( LEAST(user_one_id, user_two_id), GREATEST(user_one_id, user_two_id));
+CREATE INDEX IF NOT EXISTS idx_chat_connections_user_one ON chat_connections(user_one_id);
+CREATE INDEX IF NOT EXISTS idx_chat_connections_user_two ON chat_connections(user_two_id);
+
 SQL
 ```
 

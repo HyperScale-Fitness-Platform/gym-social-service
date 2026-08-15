@@ -17,7 +17,7 @@ async function findConversation(userA, userB, limit, offset) {
     `SELECT * FROM messages
      WHERE (sender_id = $1 AND receiver_id = $2)
         OR (sender_id = $2 AND receiver_id = $1)
-     ORDER BY created_at DESC
+     ORDER BY created_at ASC
      LIMIT $3 OFFSET $4`,
     [userA, userB, limit, offset]
   );

@@ -176,22 +176,19 @@ CREATE TABLE IF NOT EXISTS customer_profiles (
     user_id UUID PRIMARY KEY,
     full_name VARCHAR(255),
     photo_url TEXT,
+    role VARCHAR(20),            -- 'customer' | 'trainer'  (NEW — required)
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS chat_connections (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
     user_one_id UUID NOT NULL,
     user_two_id UUID NOT NULL,
-
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-
     CONSTRAINT chat_connection_different_users
         CHECK (user_one_id <> user_two_id)
 );
-
 
 CREATE INDEX IF NOT EXISTS idx_threads_created_at ON threads(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_threads_user_id ON threads(user_id);

@@ -3,6 +3,7 @@ const pool = require("../config/database");
 
 const {
   createConnection,
+  deleteUserChatData,
 } = require("../models/chatConnection.model");
 
 const kafka = new Kafka({
@@ -26,6 +27,11 @@ async function startProfileConsumer() {
       fromBeginning: true,
     });
 
+    // Trainer profile event
+    await consumer.subscribe({
+      topic: "trainer_creation",
+    });
+
     // New PT booking event
     await consumer.subscribe({
       topic: "PT_SESSION_BOOKED",
@@ -34,6 +40,12 @@ async function startProfileConsumer() {
 
     await consumer.subscribe({
       topic: "PT_PACKAGE_PURCHASED",
+      fromBeginning: true,
+    });
+
+    // User (customer/trainer) deletion cleanup
+    await consumer.subscribe({
+      topic: "deleted_users",
       fromBeginning: true,
     });
 
@@ -60,12 +72,13 @@ async function startProfileConsumer() {
             await pool.query(
               `
               INSERT INTO customer_profiles
-                (user_id, full_name, photo_url)
-              VALUES ($1, $2, $3)
+                (user_id, full_name, photo_url, role)
+              VALUES ($1, $2, $3, 'customer')
               ON CONFLICT (user_id)
               DO UPDATE SET
                 full_name = EXCLUDED.full_name,
                 photo_url = EXCLUDED.photo_url,
+                role = 'customer',
                 updated_at = NOW()
               `,
               [id, full_name, photo_url]
@@ -73,6 +86,33 @@ async function startProfileConsumer() {
 
             console.log(
               `Customer profile stored for ${id}`
+            );
+          }
+
+          else if (topic === "trainer_creation") {
+            const {
+              id,
+              full_name,
+              photo_url,
+            } = payload;
+
+            await pool.query(
+              `
+              INSERT INTO customer_profiles
+                (user_id, full_name, photo_url, role)
+              VALUES ($1, $2, $3, 'trainer')
+              ON CONFLICT (user_id)
+              DO UPDATE SET
+                full_name = EXCLUDED.full_name,
+                photo_url = EXCLUDED.photo_url,
+                role = 'trainer',
+                updated_at = NOW()
+              `,
+              [id, full_name, photo_url]
+            );
+
+            console.log(
+              `Trainer profile stored for ${id}`
             );
           }
 
@@ -126,6 +166,26 @@ async function startProfileConsumer() {
 
             console.log(
               `[Chat] Connection established after package purchase: customer ${customerId} <-> trainer ${trainerId}`
+            );
+          }
+
+          // -----------------------------------------
+          // USER DELETED
+          // -----------------------------------------
+          else if (topic === "deleted_users") {
+
+            const { id } = payload;
+
+            if (!id) {
+              throw new Error(
+                "Invalid deleted_users event: id is required"
+              );
+            }
+
+            await deleteUserChatData(id);
+
+            console.log(
+              `[Chat] Removed messages, connections and profile for user ${id}`
             );
           }
 

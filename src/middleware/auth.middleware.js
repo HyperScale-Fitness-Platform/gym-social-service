@@ -1,8 +1,8 @@
 function protect(req, res, next) {
   req.user = {
     id: req.headers['user-id'],
-    role: req.headers['role'],
-    email: req.headers['email']
+    role: req.headers['user-role'] || req.headers['role'],
+    email: req.headers['user-email'] || req.headers['email']
   };
   next();
 }

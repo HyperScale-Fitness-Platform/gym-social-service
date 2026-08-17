@@ -9,7 +9,8 @@ async function findAllThreads({ limit = 10, offset = 0 }) {
     SELECT
       t.*,
       p.full_name,
-      p.photo_url
+      p.photo_url,
+      p.role
     FROM threads t
     LEFT JOIN customer_profiles p
       ON t.user_id = p.user_id
@@ -29,7 +30,8 @@ async function findThreadsByUserId(userId, limit = 10, offset = 0) {
     SELECT
       t.*,
       p.full_name,
-      p.photo_url
+      p.photo_url,
+      p.role
     FROM threads t
     LEFT JOIN customer_profiles p
       ON t.user_id = p.user_id
@@ -49,7 +51,8 @@ async function findThreadById(id) {
     SELECT
       t.*,
       p.full_name,
-      p.photo_url
+      p.photo_url,
+      p.role
     FROM threads t
     LEFT JOIN customer_profiles p
       ON t.user_id = p.user_id
@@ -86,7 +89,8 @@ async function createThread({ userId, title, content }) {
         `
         SELECT
             full_name,
-            photo_url
+            photo_url,
+            role
         FROM customer_profiles
         WHERE user_id = $1
         `,
@@ -127,7 +131,8 @@ async function updateThread(id, { title, content }, userId) {
     `
     SELECT
       full_name,
-      photo_url
+      photo_url,
+      role
     FROM customer_profiles
     WHERE user_id = $1
     `,
@@ -165,7 +170,8 @@ async function findCommentsByThreadId(
     SELECT
       c.*,
       p.full_name,
-      p.photo_url
+      p.photo_url,
+      p.role
     FROM comments c
     LEFT JOIN customer_profiles p
       ON c.user_id = p.user_id
@@ -208,7 +214,8 @@ async function createComment({
         `
         SELECT
             full_name,
-            photo_url
+            photo_url,
+            role
         FROM customer_profiles
         WHERE user_id = $1
         `,
@@ -249,7 +256,8 @@ async function updateComment(commentId, userId, content) {
     `
     SELECT
       full_name,
-      photo_url
+      photo_url,
+      role
     FROM customer_profiles
     WHERE user_id = $1
     `,
@@ -284,6 +292,57 @@ async function adminDeleteThread(id) {
   return result.rows[0];
 }
 
+async function adminDeleteComment(commentId) {
+  const result = await pool.query(
+    `DELETE FROM comments WHERE id = $1 RETURNING *`,
+    [commentId]
+  );
+  return result.rows[0];
+}
+
+async function findAllThreadsWithComments() {
+  const threadsResult = await pool.query(
+    `
+    SELECT
+      t.*,
+      p.full_name,
+      p.photo_url,
+      p.role
+    FROM threads t
+    LEFT JOIN customer_profiles p
+      ON t.user_id = p.user_id
+    ORDER BY t.created_at DESC
+    `
+  );
+
+  const commentsResult = await pool.query(
+    `
+    SELECT
+      c.*,
+      p.full_name,
+      p.photo_url,
+      p.role
+    FROM comments c
+    LEFT JOIN customer_profiles p
+      ON c.user_id = p.user_id
+    ORDER BY c.created_at ASC
+    `
+  );
+
+  const commentsByThread = {};
+  for (const comment of commentsResult.rows) {
+    if (!commentsByThread[comment.thread_id]) {
+      commentsByThread[comment.thread_id] = [];
+    }
+    commentsByThread[comment.thread_id].push(comment);
+  }
+
+  return threadsResult.rows.map((thread) => ({
+    ...thread,
+    comments: commentsByThread[thread.id] || []
+  }));
+}
+
 
 module.exports = {
   findAllThreads,
@@ -296,5 +355,7 @@ module.exports = {
   createComment,
   updateComment,
   deleteComment,
-  adminDeleteThread
+  adminDeleteThread,
+  adminDeleteComment,
+  findAllThreadsWithComments
 };

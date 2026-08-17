@@ -245,6 +245,33 @@ async function adminDeleteThread(req, res, next) {
   }
 }
 
+async function adminGetAllThreads(req, res, next) {
+  try {
+    const threads = await socialModel.findAllThreadsWithComments();
+    res.status(200).json(threads);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function adminDeleteComment(req, res, next) {
+  try {
+    const { commentId } = req.params;
+
+    const comment = await socialModel.adminDeleteComment(commentId);
+    if (!comment) {
+      const error = new Error("Comment not found");
+      error.status = 404;
+      throw error;
+    }
+    getIO().to(`thread:${comment.thread_id}`).emit("comment:deleted", { id: comment.id, thread_id: comment.thread_id, });
+
+    res.status(200).json({ message: "Comment removed successfully" });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getAllThreads,
   getUserThreads,
@@ -256,5 +283,7 @@ module.exports = {
   createComment,
   updateComment,
   deleteComment,
-  adminDeleteThread
+  adminDeleteThread,
+  adminGetAllThreads,
+  adminDeleteComment
 };

@@ -34,6 +34,26 @@ async function connectionExists(userA, userB) {
   return result.rows.length > 0;
 }
 
+async function deleteUserChatData(userId) {
+  await pool.query(
+    `DELETE FROM messages
+     WHERE sender_id = $1 OR receiver_id = $1`,
+    [userId]
+  );
+
+  await pool.query(
+    `DELETE FROM chat_connections
+     WHERE user_one_id = $1 OR user_two_id = $1`,
+    [userId]
+  );
+
+  await pool.query(
+    `DELETE FROM customer_profiles
+     WHERE user_id = $1`,
+    [userId]
+  );
+}
+
 async function getUserConnections(userId) {
   const result = await pool.query(
     `
@@ -71,4 +91,5 @@ module.exports = {
   createConnection,
   connectionExists,
   getUserConnections,
+  deleteUserChatData,
 };

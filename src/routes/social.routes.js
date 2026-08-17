@@ -23,6 +23,8 @@ router.put("/threads/:id/comments/:commentId", protect, socialController.updateC
 router.delete("/threads/:id/comments/:commentId", protect, socialController.deleteComment);
 
 // Admin
+router.get("/admin/threads", protect, adminOnly, socialController.adminGetAllThreads);
 router.delete("/admin/threads/:id", protect, adminOnly, socialController.adminDeleteThread);
+router.delete("/admin/threads/:id/comments/:commentId", protect, adminOnly, socialController.adminDeleteComment);
 
 module.exports = router;
